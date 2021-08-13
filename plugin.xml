@@ -1,13 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
-<plugin id="cordova-plugin-callkit" version="1.1.0"
+<plugin id="cordova-plugin-callkit" version="1.1.8"
         xmlns="http://apache.org/cordova/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android">
     <name>Cordova CallKit</name>
-
-    <preference name="API_URL_CALL"/>
-    <preference name="API_URL_RING"/>
-    <preference name="API_USERNAME"/>
-    <preference name="API_PASSWORD"/>
 
     <js-module name="VoIPPushNotification" src="www/VoIPPushNotification.js">
         <clobbers target="VoIPPushNotification"/>
@@ -65,11 +60,6 @@
                 <param name="ios-package" value="CordovaCall"/>
                 <param name="onload" value="true"/>
             </feature>
-
-            <preference name="API_URL_CALL" value="$API_URL_CALL"/>
-            <preference name="API_URL_RING" value="$API_URL_RING"/>
-            <preference name="API_USERNAME" value="$API_USERNAME"/>
-            <preference name="API_PASSWORD" value="$API_PASSWORD"/>
         </config-file>
 
         <config-file target="*-Info.plist" parent="UIBackgroundModes">
@@ -91,7 +81,7 @@
 	      <array>
 	        <string>INStartAudioCallIntent</string>
 	        <string>INStartVideoCallIntent</string>
-            <string>INStartCallIntent</string>
+            <!-- <string>INStartCallIntent</string> -->
 	      </array>
 	    </config-file>
 
