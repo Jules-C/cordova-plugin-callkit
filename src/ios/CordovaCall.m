@@ -34,7 +34,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     NSMutableSet *handleTypes = [[NSMutableSet alloc] init];
     [handleTypes addObject:@(CXHandleTypePhoneNumber)];
     providerConfiguration.supportedHandleTypes = handleTypes;
-    providerConfiguration.supportsVideo = YES;
+    providerConfiguration.supportsVideo = NO;
     if (@available(iOS 11.0, *)) {
         providerConfiguration.includesCallsInRecents = NO;
     }
