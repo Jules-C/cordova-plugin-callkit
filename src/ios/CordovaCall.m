@@ -6,19 +6,11 @@
 
 @synthesize VoIPPushCallbackId, VoIPPushClassName, VoIPPushMethodName;
 
-BOOL hasVideo = YES;
+BOOL hasVideo = NO;
 NSString* appName;
 NSString* ringtone;
 NSString* icon;
-NSString* apiUrlCall;
-NSString* apiUrlRing;
-NSString* apiUsername;
-NSString* apiPassword;
 BOOL includeInRecents = NO;
-NSString* user;
-NSString* connectionId;
-NSString* notificationId;
-NSString* receiverId;
 NSMutableDictionary<NSString*, NSMutableArray*> *callbackIds;
 NSDictionary* pendingCallFromRecents;
 BOOL monitorAudioRouteChange = NO;
@@ -34,22 +26,17 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 
 - (void)pluginInitialize
 {
-    apiUrlCall = [[self.commandDelegate settings] objectForKey:@"api_url_call"];
-    apiUrlRing = [[self.commandDelegate settings] objectForKey:@"api_url_ring"];
-    apiUsername = [[self.commandDelegate settings] objectForKey:@"api_username"];
-    apiPassword = [[self.commandDelegate settings] objectForKey:@"api_password"];
-    
     CXProviderConfiguration *providerConfiguration;
     appName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"];
     providerConfiguration = [[CXProviderConfiguration alloc] initWithLocalizedName:appName];
     providerConfiguration.maximumCallGroups = 1;
     providerConfiguration.maximumCallsPerCallGroup = 1;
     NSMutableSet *handleTypes = [[NSMutableSet alloc] init];
-    [handleTypes addObject:@(CXHandleTypeGeneric)];
+    [handleTypes addObject:@(CXHandleTypePhoneNumber)];
     providerConfiguration.supportedHandleTypes = handleTypes;
     providerConfiguration.supportsVideo = YES;
     if (@available(iOS 11.0, *)) {
-        providerConfiguration.includesCallsInRecents = NSJSONSerialization;
+        providerConfiguration.includesCallsInRecents = NO;
     }
     self.provider = [[CXProvider alloc] initWithConfiguration:providerConfiguration];
     [self.provider setDelegate:self queue:nil];
@@ -99,39 +86,38 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     if(ringtone != nil) {
         providerConfiguration.ringtoneSound = ringtone;
     }
-    
     if(icon != nil) {
         UIImage *iconImage = [UIImage imageNamed:icon];
         NSData *iconData = UIImagePNGRepresentation(iconImage);
         providerConfiguration.iconTemplateImageData = iconData;
     }
     NSMutableSet *handleTypes = [[NSMutableSet alloc] init];
-    [handleTypes addObject:@(CXHandleTypeGeneric)];
+    [handleTypes addObject:@(CXHandleTypePhoneNumber)];
     providerConfiguration.supportedHandleTypes = handleTypes;
     providerConfiguration.supportsVideo = hasVideo;
     if (@available(iOS 11.0, *)) {
         providerConfiguration.includesCallsInRecents = includeInRecents;
     }
-    
+
     self.provider.configuration = providerConfiguration;
 }
 
 - (void)setupAudioSession
 {
     @try {
-        AVAudioSession *sessionInstance = [AVAudioSession sharedInstance];
-        //        [sessionInstance setCategory:AVAudioSessionCategoryPlayAndRecord
-        //                         withOptions:AVAudioSessionCategoryOptionMixWithOthers |
-        //         AVAudioSessionCategoryOptionDefaultToSpeaker error:nil];
-        [sessionInstance setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
-        [sessionInstance setMode:AVAudioSessionModeVoiceChat error:nil];
-        NSTimeInterval bufferDuration = .005;
-        [sessionInstance setPreferredIOBufferDuration:bufferDuration error:nil];
-        [sessionInstance setPreferredSampleRate:44100 error:nil];
-        NSLog(@"Configuring Audio");
+      AVAudioSession *sessionInstance = [AVAudioSession sharedInstance];
+    //        [sessionInstance setCategory:AVAudioSessionCategoryPlayAndRecord
+    //                         withOptions:AVAudioSessionCategoryOptionMixWithOthers |
+    //         AVAudioSessionCategoryOptionDefaultToSpeaker error:nil];
+      [sessionInstance setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
+      [sessionInstance setMode:AVAudioSessionModeVoiceChat error:nil];
+      NSTimeInterval bufferDuration = .005;
+      [sessionInstance setPreferredIOBufferDuration:bufferDuration error:nil];
+      [sessionInstance setPreferredSampleRate:44100 error:nil];
+      NSLog(@"Configuring Audio");
     }
     @catch (NSException *exception) {
-        NSLog(@"Unknown error returned from setupAudioSession");
+       NSLog(@"Unknown error returned from setupAudioSession");
     }
     return;
 }
@@ -140,7 +126,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 {
     CDVPluginResult* pluginResult = nil;
     NSString* proposedAppName = [command.arguments objectAtIndex:0];
-    
+
     if (proposedAppName != nil && [proposedAppName length] > 0) {
         appName = proposedAppName;
         [self updateProviderConfig];
@@ -148,7 +134,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     } else {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"App Name Can't Be Empty"];
     }
-    
+
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
@@ -156,7 +142,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 {
     CDVPluginResult* pluginResult = nil;
     NSString* proposedIconName = [command.arguments objectAtIndex:0];
-    
+
     if (proposedIconName == nil || [proposedIconName length] == 0) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Icon Name Can't Be Empty"];
     } else if([UIImage imageNamed:proposedIconName] == nil) {
@@ -166,7 +152,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
         [self updateProviderConfig];
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Icon Changed Successfully"];
     }
-    
+
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
@@ -174,7 +160,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 {
     CDVPluginResult* pluginResult = nil;
     NSString* proposedRingtoneName = [command.arguments objectAtIndex:0];
-    
+
     if (proposedRingtoneName == nil || [proposedRingtoneName length] == 0) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Ringtone Name Can't Be Empty"];
     } else {
@@ -182,7 +168,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
         [self updateProviderConfig];
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Ringtone Changed Successfully"];
     }
-    
+
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
@@ -218,14 +204,14 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     NSString* callName = [command.arguments objectAtIndex:0];
     NSString* callId = hasId?[command.arguments objectAtIndex:1]:callName;
     NSUUID *callUUID = [[NSUUID alloc] init];
-    
+
     if (hasId) {
         [[NSUserDefaults standardUserDefaults] setObject:callName forKey:[command.arguments objectAtIndex:1]];
         [[NSUserDefaults standardUserDefaults] synchronize];
     }
-    
+
     if (callName != nil && [callName length] > 0) {
-        CXHandle *handle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value:callId];
+        CXHandle *handle = [[CXHandle alloc] initWithType:CXHandleTypePhoneNumber value:callId];
         CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
         callUpdate.remoteHandle = handle;
         callUpdate.hasVideo = hasVideo;
@@ -237,33 +223,6 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
         if (!isRinging) {
             [self.provider reportNewIncomingCallWithUUID:callUUID update:callUpdate completion:^(NSError * _Nullable error) {
                 if(error == nil) {
-                    NSString *post = [NSString stringWithFormat:@"{\"senderUsername\": \"%@\", \"receiverUsername\": \"%@\", \"username\": \"%@\", \"password\": \"%@\"}", receiverId, connectionId, apiUsername, apiPassword];
-                    NSData *postData = [post dataUsingEncoding:NSASCIIStringEncoding allowLossyConversion:YES];
-                    NSString *postLength = [NSString stringWithFormat:@"%lu", (unsigned long)[postData length]];
-                    NSMutableURLRequest *request = [[NSMutableURLRequest alloc] init];
-                    [request setURL:[NSURL URLWithString:apiUrlRing]];
-                    [request setHTTPMethod:@"POST"];
-                    [request setValue:postLength forHTTPHeaderField:@"Content-Length"];
-                    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-                    [request setHTTPBody:postData];
-                    
-                    NSURLSessionConfiguration* sessionConfig = [NSURLSessionConfiguration defaultSessionConfiguration];
-                    
-                    /* Create session, and optionally set a NSURLSessionDelegate. */
-                    NSURLSession* session = [NSURLSession sessionWithConfiguration:sessionConfig delegate:nil delegateQueue:nil];
-                    
-                    /* Start a new Task */
-                    NSURLSessionDataTask* task = [session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-                        if (error == nil) {
-                            // Success
-                            NSLog(@"URL Session Task Succeeded: HTTP %ld", ((NSHTTPURLResponse*)response).statusCode);
-                        }
-                        else {
-                            // Failure
-                            NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
-                        }
-                    }];
-                    [task resume];
                     isRinging = YES;
                     [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Incoming call successful"] callbackId:command.callbackId];
                 } else {
@@ -272,8 +231,8 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
             }];
             for (id callbackId in callbackIds[@"receiveCall"]) {
                 CDVPluginResult* pluginResult = nil;
-                NSDictionary *response = @{@"response": @"receiveCall event called successfully", @"user": user, @"connectionId": connectionId, @"notificationId": notificationId};
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:response];
+                NSDictionary *response = @{@"response": @"receiveCall event called successfully", @"connectionId": connectionId};
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"receiveCall event called successfully"];
                 [pluginResult setKeepCallbackAsBool:YES];
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
             }
@@ -291,14 +250,14 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     NSString* callName = [command.arguments objectAtIndex:0];
     NSString* callId = hasId?[command.arguments objectAtIndex:1]:callName;
     NSUUID *callUUID = [[NSUUID alloc] init];
-    
+
     if (hasId) {
         [[NSUserDefaults standardUserDefaults] setObject:callName forKey:[command.arguments objectAtIndex:1]];
         [[NSUserDefaults standardUserDefaults] synchronize];
     }
-    
+
     if (callName != nil && [callName length] > 0) {
-        CXHandle *handle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value:callId];
+        CXHandle *handle = [[CXHandle alloc] initWithType:CXHandleTypePhoneNumber value:callId];
         CXStartCallAction *startCallAction = [[CXStartCallAction alloc] initWithCallUUID:callUUID handle:handle];
         startCallAction.contactIdentifier = callName;
         startCallAction.video = hasVideo;
@@ -319,14 +278,14 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 {
     CDVPluginResult* pluginResult = nil;
     NSArray<CXCall *> *calls = self.callController.callObserver.calls;
-    
+
     if([calls count] == 1) {
         [self.provider reportOutgoingCallWithUUID:calls[0].UUID connectedAtDate:nil];
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Call connected successfully"];
     } else {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No call exists for you to connect"];
     }
-    
+
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
@@ -335,7 +294,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     isRinging = NO;
     CDVPluginResult* pluginResult = nil;
     NSArray<CXCall *> *calls = self.callController.callObserver.calls;
-    
+
     if([calls count] == 1) {
         //[self.provider reportCallWithUUID:calls[0].UUID endedAtDate:nil reason:CXCallEndedReasonRemoteEnded];
         CXEndCallAction *endCallAction = [[CXEndCallAction alloc] initWithCallUUID:calls[0].UUID];
@@ -350,7 +309,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     } else {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No call exists for you to connect"];
     }
-    
+
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
@@ -384,14 +343,14 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     CDVPluginResult* pluginResult = nil;
     AVAudioSession *sessionInstance = [AVAudioSession sharedInstance];
     if(sessionInstance.isInputGainSettable) {
-        BOOL success = [sessionInstance setInputGain:0.0 error:nil];
-        if(success) {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Muted Successfully"];
-        } else {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"An error occurred"];
-        }
+      BOOL success = [sessionInstance setInputGain:0.0 error:nil];
+      if(success) {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Muted Successfully"];
+      } else {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"An error occurred"];
+      }
     } else {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Not muted because this device does not allow changing inputGain"];
+      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Not muted because this device does not allow changing inputGain"];
     }
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
@@ -401,14 +360,14 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     CDVPluginResult* pluginResult = nil;
     AVAudioSession *sessionInstance = [AVAudioSession sharedInstance];
     if(sessionInstance.isInputGainSettable) {
-        BOOL success = [sessionInstance setInputGain:1.0 error:nil];
-        if(success) {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Muted Successfully"];
-        } else {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"An error occurred"];
-        }
+      BOOL success = [sessionInstance setInputGain:1.0 error:nil];
+      if(success) {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Muted Successfully"];
+      } else {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"An error occurred"];
+      }
     } else {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Not unmuted because this device does not allow changing inputGain"];
+      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Not unmuted because this device does not allow changing inputGain"];
     }
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
@@ -419,9 +378,9 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     AVAudioSession *sessionInstance = [AVAudioSession sharedInstance];
     BOOL success = [sessionInstance overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:nil];
     if(success) {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Speakerphone is on"];
+      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Speakerphone is on"];
     } else {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"An error occurred"];
+      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"An error occurred"];
     }
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
@@ -432,9 +391,9 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     AVAudioSession *sessionInstance = [AVAudioSession sharedInstance];
     BOOL success = [sessionInstance overrideOutputAudioPort:AVAudioSessionPortOverrideNone error:nil];
     if(success) {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Speakerphone is off"];
+      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Speakerphone is off"];
     } else {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"An error occurred"];
+      pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"An error occurred"];
     }
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
@@ -445,27 +404,27 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     NSString* phoneNumber = [command.arguments objectAtIndex:0];
     NSString* telNumber = [@"tel://" stringByAppendingString:phoneNumber];
     if (@available(iOS 10.0, *)) {
-        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:telNumber]
-                                           options:@{}
-                                 completionHandler:^(BOOL success) {
-            if(success) {
-                CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Call Successful"];
-                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-            } else {
-                CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Call Failed"];
-                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-            }
-        }];
+      [[UIApplication sharedApplication] openURL:[NSURL URLWithString:telNumber]
+                                         options:nil
+                                         completionHandler:^(BOOL success) {
+                                           if(success) {
+                                             CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Call Successful"];
+                                             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                                           } else {
+                                             CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Call Failed"];
+                                             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                                           }
+                                         }];
     } else {
-        BOOL success = [[UIApplication sharedApplication] openURL:[NSURL URLWithString:telNumber]];
-        if(success) {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Call Successful"];
-        } else {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Call Failed"];
-        }
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+      BOOL success = [[UIApplication sharedApplication] openURL:[NSURL URLWithString:telNumber]];
+      if(success) {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Call Successful"];
+      } else {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Call Failed"];
+      }
+      [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     }
-    
+
 }
 
 - (void)receiveCallFromRecents:(NSNotification *) notification
@@ -473,7 +432,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     NSString* callID = notification.object[@"callId"];
     NSString* callName = notification.object[@"callName"];
     NSUUID *callUUID = [[NSUUID alloc] init];
-    CXHandle *handle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value:callID];
+    CXHandle *handle = [[CXHandle alloc] initWithType:CXHandleTypePhoneNumber value:callID];
     CXStartCallAction *startCallAction = [[CXStartCallAction alloc] initWithCallUUID:callUUID handle:handle];
     startCallAction.video = [notification.object[@"isVideo"] boolValue]?YES:NO;
     startCallAction.contactIdentifier = callName;
@@ -584,36 +543,6 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
             }
         } else {
-            if (nil != user) {
-                NSString *post = [NSString stringWithFormat:@"{\"notificationId\": \"%@\", \"senderUsername\": \"%@\", \"receiverUsername\": \"%@\", \"username\": \"%@\", \"password\": \"%@\"}", notificationId, receiverId, connectionId, apiUsername, apiPassword];
-                NSData *postData = [post dataUsingEncoding:NSASCIIStringEncoding allowLossyConversion:YES];
-                NSString *postLength = [NSString stringWithFormat:@"%lu", (unsigned long)[postData length]];
-                NSMutableURLRequest *request = [[NSMutableURLRequest alloc] init];
-                [request setURL:[NSURL URLWithString:apiUrlCall]];
-                [request setHTTPMethod:@"POST"];
-                [request setValue:postLength forHTTPHeaderField:@"Content-Length"];
-                [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-                [request setHTTPBody:postData];
-                
-                NSURLSessionConfiguration* sessionConfig = [NSURLSessionConfiguration defaultSessionConfiguration];
-                
-                /* Create session, and optionally set a NSURLSessionDelegate. */
-                NSURLSession* session = [NSURLSession sessionWithConfiguration:sessionConfig delegate:nil delegateQueue:nil];
-                
-                /* Start a new Task */
-                NSURLSessionDataTask* task = [session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-                    if (error == nil) {
-                        // Success
-                        NSLog(@"URL Session Task Succeeded: HTTP %ld", ((NSHTTPURLResponse*)response).statusCode);
-                    }
-                    else {
-                        // Failure
-                        NSLog(@"URL Session Task Failed: %@", [error localizedDescription]);
-                    }
-                }];
-                [task resume];
-            }
-            
             if ([callbackIds[@"reject"] count] == 0) {
                 // callbackId for event not registered, add to pending to trigger on registration
                 [pendingCallResponses addObject:PENDING_RESPONSE_REJECT];
@@ -631,22 +560,14 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     if ([response isEqualToString:@"answer"]) {
         for (id callbackId in callbackIds[@"answer"]) {
             CDVPluginResult* pluginResult = nil;
-            NSDictionary *response = @{@"response": @"answer event called successfully", @"user": user, @"connectionId": connectionId, @"notificationId": notificationId};
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:response];
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"answer event called successfully"];
             [pluginResult setKeepCallbackAsBool:YES];
             [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
         }
     } else if ([response isEqualToString:@"reject"]) {
         for (id callbackId in callbackIds[@"reject"]) {
             CDVPluginResult* pluginResult = nil;
-            
-            if (nil != user) {
-                NSDictionary *response = @{@"response": @"reject event called successfully", @"user": user, @"connectionId": connectionId, @"notificationId": notificationId};
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:response];
-            } else {
-                NSString *response = @"reject event called successfully";
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:response];
-            }
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"reject event called successfully"];
             [pluginResult setKeepCallbackAsBool:YES];
             [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
         }
@@ -691,7 +612,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     if (!self.VoIPPushCallbackId || !self.VoIPPushToken) {
         return;
     }
-    
+
     NSMutableDictionary* results = [NSMutableDictionary dictionaryWithCapacity:2];
     [results setObject:self.VoIPPushToken forKey:@"deviceToken"];
     [results setObject:@"true" forKey:@"registration"];
@@ -707,14 +628,14 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
         NSLog(@"[objC] No device token!");
         return;
     }
-    
+
     //http://stackoverflow.com/a/9372848/534755
     NSLog(@"[objC] Device token: %@", credentials.token);
     const unsigned *tokenBytes = [credentials.token bytes];
     self.VoIPPushToken = [NSString stringWithFormat:@"%08x%08x%08x%08x%08x%08x%08x%08x",
-                          ntohl(tokenBytes[0]), ntohl(tokenBytes[1]), ntohl(tokenBytes[2]),
-                          ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
-                          ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
+                         ntohl(tokenBytes[0]), ntohl(tokenBytes[1]), ntohl(tokenBytes[2]),
+                         ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
+                         ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
     
     // Store VoIPPushToken in UserDefaults
     [[NSUserDefaults standardUserDefaults] setObject:self.VoIPPushToken forKey:KEY_VOIP_PUSH_TOKEN];
@@ -725,7 +646,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 {
     NSDictionary *payloadDict = payload.dictionaryPayload[@"aps"];
     NSLog(@"[objC] didReceiveIncomingPushWithPayload: %@", payloadDict);
-    
+
     NSString *message = payloadDict[@"alert"];
     NSLog(@"[objC] received VoIP message: %@", message);
     
@@ -735,20 +656,9 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     NSMutableDictionary* results = [NSMutableDictionary dictionaryWithCapacity:2];
     [results setObject:message forKey:@"function"];
     [results setObject:@"" forKey:@"extra"];
-    
+
     NSObject* caller = [data objectForKey:@"Caller"];
-    if ([@"video" isEqual:[caller valueForKey:@"Type"]]) {
-        hasVideo = YES;
-    } else {
-        hasVideo = NO;
-    }
-    
-    user = [caller valueForKey:@"Username"];
-    connectionId = [caller valueForKey:@"ConnectionId"];
-    receiverId = [caller valueForKey:@"ReceiverId"];
-    notificationId = [caller valueForKey:@"NotificationId"];
-    
-    NSArray* args = [NSArray arrayWithObjects:[caller valueForKey:@"Username"], [caller valueForKey:@"ConnectionId"], [caller valueForKey:@"NotificationId"], nil];
+    NSArray* args = [NSArray arrayWithObjects:[caller valueForKey:@"Username"], [caller valueForKey:@"ConnectionId"], nil];
     CDVInvokedUrlCommand* newCommand = [[CDVInvokedUrlCommand alloc] initWithArguments:args callbackId:@"" className:self.VoIPPushClassName methodName:self.VoIPPushMethodName];
     
     [self receiveCall:newCommand];
