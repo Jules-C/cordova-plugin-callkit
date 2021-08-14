@@ -231,7 +231,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
             }];
             for (id callbackId in callbackIds[@"receiveCall"]) {
                 CDVPluginResult* pluginResult = nil;
-                NSDictionary *response = @{@"response": @"receiveCall event called successfully", @"connectionId": connectionId};
+                // NSDictionary *response = @{@"response": @"receiveCall event called successfully", @"connectionId": connectionId};
                 pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"receiveCall event called successfully"];
                 [pluginResult setKeepCallbackAsBool:YES];
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
