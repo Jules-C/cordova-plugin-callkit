@@ -55,6 +55,7 @@
     </platform>
 
     <platform name="ios">
+    <resource-file src="FracTEL-SQRCL-icon.png" />
         <config-file target="config.xml" parent="/*">
             <feature name="CordovaCall">
                 <param name="ios-package" value="CordovaCall"/>
