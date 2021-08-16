@@ -10,7 +10,7 @@ BOOL hasVideo = NO;
 NSString* appName;
 NSString* ringtone;
 NSString* icon;
-BOOL includeInRecents = NO;
+BOOL includeInRecents = YES;
 NSMutableDictionary<NSString*, NSMutableArray*> *callbackIds;
 NSDictionary* pendingCallFromRecents;
 BOOL monitorAudioRouteChange = NO;
@@ -36,7 +36,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     providerConfiguration.supportedHandleTypes = handleTypes;
     providerConfiguration.supportsVideo = NO;
     if (@available(iOS 11.0, *)) {
-        providerConfiguration.includesCallsInRecents = NO;
+        providerConfiguration.includesCallsInRecents = YES;
     }
     self.provider = [[CXProvider alloc] initWithConfiguration:providerConfiguration];
     [self.provider setDelegate:self queue:nil];
